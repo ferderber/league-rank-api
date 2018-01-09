@@ -30,12 +30,22 @@ function formatSummoner(summoner, champions) {
       }))
   };
 }
+
 function formatChampion(champion) {
-  return {name: champion.name, key: champion.key, id: champion.id};
+  return {
+    name: champion.name,
+    key: champion.key,
+    id: champion.id
+  };
 }
 
 function formatMastery(mastery) {
-  return {summonerId: mastery.summonerId, championId: mastery.championId, championPoints: mastery.championPoints, championLevel: mastery.championLevel};
+  return {
+    summonerId: mastery.summonerId,
+    championId: mastery.championId,
+    championPoints: mastery.championPoints,
+    championLevel: mastery.championLevel
+  };
 }
 
 _.get('/summoners', async(ctx, next) => {
@@ -59,13 +69,12 @@ _.get('/summoners/:page_id', async(ctx, page, next) => {
         limit: 10,
         offset: (pageNum - 1) * 10,
         order: [
-          ['summonerLevel', 'DESC NULLS LAST']
+          ['summonerLevel', 'DESC NULLS LAST'],
+          [ctx.ChampionMastery, 'championPoints', 'DESC']
         ],
-        include: [
-          {
-            model: ctx.ChampionMastery
-          }
-        ]
+        include: [{
+          model: ctx.ChampionMastery
+        }]
       });
     ctx.body = summoners.map((summoner) => formatSummoner(summoner, ctx.champions));
   }
@@ -76,7 +85,9 @@ async function updateRecentGames(models, summoner) {
   //get 20 games from api
   const recents = await api
     .Match
-    .gettingListByAccount(summoner.accountId, {endIndex: 20});
+    .gettingListByAccount(summoner.accountId, {
+      endIndex: 20
+    });
   //get db games that match
   const cachedMatches = await models
     .Match
@@ -90,7 +101,12 @@ async function updateRecentGames(models, summoner) {
     //add those matches to the database
     const createdMatches = await models
       .Match
-      .bulkCreate(newRecents.map(m => ({id: m.gameId, timestamp: m.timestamp, season: m.season, queue: m.queue})));
+      .bulkCreate(newRecents.map(m => ({
+        id: m.gameId,
+        timestamp: m.timestamp,
+        season: m.season,
+        queue: m.queue
+      })));
     //retrieve detailed match view
     const matches = await Promise.all(newRecents.map(recent => api.Match.gettingById(recent.gameId)));
     const summonersMap = new Map();
@@ -104,7 +120,13 @@ async function updateRecentGames(models, summoner) {
             .participantIdentities
             .find(summ => summ.participantId === p.participantId)
             .player;
-          return {id: identity.summonerId, accountId: identity.accountId, name: identity.summonerName, profileIconId: identity.profileIcon, participantId: p.participantId};
+          return {
+            id: identity.summonerId,
+            accountId: identity.accountId,
+            name: identity.summonerName,
+            profileIconId: identity.profileIcon,
+            participantId: p.participantId
+          };
         });
       newSummoners = [
         ...newSummoners,
@@ -134,7 +156,8 @@ async function updateRecentGames(models, summoner) {
           break;
         }
       }
-      if (!duplicate) {
+      if (!duplicate && sortedSummoners[i].id !== undefined) {
+
         filteredSummoners.push(sortedSummoners[i]);
       }
       duplicate = false;
@@ -186,7 +209,14 @@ async function updateTopMasteries(ChampionMastery, summoner) {
       summonerId: summoner.id
     }
   });
-  const insertedMasteries = await ChampionMastery.bulkCreate(masteries.slice(0, 4).map((m) => ({summonerId: m.playerId, championId: m.championId, championPoints: m.championPoints, championPointsUntilNextLevel: m.championPointsUntilNextLevel, championLevel: m.championLevel})));
+  const insertedMasteries = await ChampionMastery.bulkCreate(masteries.slice(0, 4).map((m) => ({
+    summonerId: m.playerId,
+    championId: m.championId,
+    championPoints: m.championPoints,
+    championPointsUntilNextLevel: m.championPointsUntilNextLevel,
+    championLevel: m.championLevel
+  })));
+  console.log(insertedMasteries);
   return insertedMasteries;
 }
 
@@ -194,6 +224,7 @@ async function updateSummoner(models, summoner) {
   const games = await updateRecentGames(models, summoner);
   const masteries = await updateTopMasteries(models.ChampionMastery, summoner);
 }
+
 function getStatisticsFromMatches(matches, championMasteries) {
   // all statistics are averages over all games let kills, deaths, assists,
   for (var h = 0; h < championMasteries.length; h++) {
@@ -214,12 +245,12 @@ function getStatisticsFromMatches(matches, championMasteries) {
         currStats.kills += matches[i].kills;
         currStats.deaths += matches[i].deaths;
         currStats.assists += matches[i].assists;
-        currStats.kda += (matches[i].kills + matches[i].assists) / (matches[i].deaths > 0
-          ? matches[i].deaths
-          : 1);
-        currStats.wins += matches[i].win
-          ? 1
-          : 0;
+        currStats.kda += (matches[i].kills + matches[i].assists) / (matches[i].deaths > 0 ?
+          matches[i].deaths :
+          1);
+        currStats.wins += matches[i].win ?
+          1 :
+          0;
         currStats.wardsPlaced += matches[i].wardsPlaced;
         currStats.goldEarned += matches[i].goldEarned;
       }
@@ -230,15 +261,16 @@ function getStatisticsFromMatches(matches, championMasteries) {
   return championMasteries;
 }
 
-_.get('/summoner/:name', async(ctx, name, next) => {
+_.post('/summoners/:name', async(ctx, name, next) => {
   let summoner = await ctx
     .Summoner
     .findOne({
       where: Sequelize.where(Sequelize.fn('lower', Sequelize.col('name')), name),
-      include: [
-        {
-          model: ctx.ChampionMastery
-        }
+      include: [{
+        model: ctx.ChampionMastery
+      }],
+      order: [
+        [ ctx.ChampionMastery, 'championPoints', 'DESC']
       ]
     });
 
@@ -265,11 +297,14 @@ _.get('/summoner/:name', async(ctx, name, next) => {
 
       summoner.ChampionMasteries = await updateTopMasteries(ctx.ChampionMastery, summoner);
     } else {
-      throw {statusCode: 404, body: "Summoner not found"};
+      throw {
+        statusCode: 404,
+        body: "Summoner not found"
+      };
     }
   } else if (Date.now() - summoner.revisionDate > (1000 * 60 * 60 * 24)) {
     console.log("Updating users data");
-    summoner.ChampionMasteries = masteries = await updateTopMasteries(ctx.ChampionMastery, summoner);
+    summoner.ChampionMasteries = await updateTopMasteries(ctx.ChampionMastery, summoner);
   }
 
   summoner.matches = await updateRecentGames({
