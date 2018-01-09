@@ -1,0 +1,25 @@
+{
+  "name": "league-rank-api",
+  "version": "0.0.1",
+  "description": "API for LeagueRank",
+  "main": "index.js",
+  "repository": "https://github.com/matthewferderber/league-rank-api",
+  "author": "Matthew Ferderber <matthewferderber@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "start": "node index.js",
+    "db-setup": "node scripts/db-setup.js"
+  },
+  "dependencies": {
+    "@koa/cors": "2",
+    "koa": "^2.4.1",
+    "koa-bodyparser": "^4.2.0",
+    "koa-jwt": "^3.3.0",
+    "koa-route": "^3.2.0",
+    "koa-router": "^7.3.0",
+    "leaguejs": "^1.6.1",
+    "pg": "6",
+    "pg-hstore": "^2.3.2",
+    "sequelize": "^4.28.5"
+  }
+}
