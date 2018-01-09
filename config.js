@@ -12,7 +12,7 @@ switch (process.env.NODE_ENV) {
   case 'production':
   case 'prod':
     config.PORT = 4123;
-    config.PASSWORD = process.env.DB_PASSWORD;
+    config.PASSWORD = process.env.LEAGUE_RANK_DB_PASSWORD;
     break;
   default:
     config.ENV = 'development';
