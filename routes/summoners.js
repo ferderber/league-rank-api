@@ -77,6 +77,9 @@ _.get('/summoners/:page_id', async(ctx, page, next) => {
           model: ctx.ChampionMastery
         }]
       });
+      if(summoners.length === 0) {
+        throw new ClientError(404, "No more summoners available.");
+      }
     ctx.body = summoners.map((summoner) => formatSummoner(summoner, ctx.champions));
   }
 });
