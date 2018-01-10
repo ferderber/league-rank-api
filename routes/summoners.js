@@ -270,11 +270,16 @@ function getStatisticsFromMatches(matches, championMasteries) {
   return championMasteries;
 }
 
+function normalizeName(name) {
+  return name.replace(' ', '').toLowerCase().trim();  
+}
+
 _.post('/summoners/:name', async(ctx, name, next) => {
+  const normalizedName = normalizeName(name);
   let summoner = await ctx
     .Summoner
     .findOne({
-      where: Sequelize.where(Sequelize.fn('lower', Sequelize.col('name')), name),
+      where: Sequelize.where(Sequelize.fn('lower', Sequelize.col('name')), normalizedName),
       include: [{
         model: ctx.ChampionMastery
       }],
@@ -285,11 +290,11 @@ _.post('/summoners/:name', async(ctx, name, next) => {
 
   //If summoner doesn't exist, get and add to db
   if (!summoner || summoner.revisionDate === null) {
-    console.log(`Summoner ${name} not found, retrieving from API`);
+    console.log(`Summoner ${normalizedName} not found, retrieving from API`);
     try {
       const s = await api
         .Summoner
-        .gettingByName(name);
+        .gettingByName(normalizedName);
       if (s) {
         created = await ctx
           .Summoner
