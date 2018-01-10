@@ -1,11 +1,10 @@
 const Sequelize = require('sequelize');
+const ClientError = require('./ClientError');
 
 module.exports = async function (ctx, next) {
   try {
     await next();
   } catch (err) {
-    console.log(err.constructor === Sequelize.UniqueConstraintError);
-    ctx.status = err.statusCode || 500;
     switch (err.statusCode) {
       case 403:
         ctx.body = {
@@ -14,6 +13,12 @@ module.exports = async function (ctx, next) {
         break;
       default:
         console.error(err);
+    }
+    ctx.status = err.statusCode || 500;
+    if (err.constructor === ClientError) {
+      Object.assign(ctx, err.getResponse());
+    } else if (err.constructor === Sequelize.UniqueConstraintError) {
+      console.log('Sequelize unique constraint: ' + err.message);
     }
     ctx
       .app

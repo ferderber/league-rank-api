@@ -17,7 +17,7 @@ db
   .then((champions) => {
     app.context.champions = champions;
 
-    if (process.env.NODE_ENV != 'prod') {
+    if (process.env.NODE_ENV !== 'production') {
       app.use(cors());
     }
 

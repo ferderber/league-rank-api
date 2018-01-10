@@ -2,6 +2,7 @@ const _ = require('./route-collector');
 const LeagueJS = require('leaguejs');
 const config = require('../config');
 const Sequelize = require('sequelize');
+const ClientError = require('../ClientError');
 const Op = Sequelize.Op;
 
 const api = new LeagueJS(config.LEAGUE_API_KEY, {
@@ -83,11 +84,16 @@ _.get('/summoners/:page_id', async(ctx, page, next) => {
 //Returns 20 game IDs
 async function updateRecentGames(models, summoner) {
   //get 20 games from api
-  const recents = await api
-    .Match
-    .gettingListByAccount(summoner.accountId, {
-      endIndex: 20
-    });
+  let recents = [];
+  try {
+    recents = await api
+      .Match
+      .gettingListByAccount(summoner.accountId, {
+        endIndex: 20
+      });
+  } catch (err) {
+    throw new ClientError(404, "No recent matches for this summoner");
+  }
   //get db games that match
   const cachedMatches = await models
     .Match
@@ -201,23 +207,26 @@ async function updateRecentGames(models, summoner) {
 
 //Returns top 4 champion masteries
 async function updateTopMasteries(ChampionMastery, summoner) {
-  const masteries = await api
-    .ChampionMastery
-    .gettingBySummoner(summoner.id);
-  const deletedMasteries = await ChampionMastery.destroy({
-    where: {
-      summonerId: summoner.id
-    }
-  });
-  const insertedMasteries = await ChampionMastery.bulkCreate(masteries.slice(0, 4).map((m) => ({
-    summonerId: m.playerId,
-    championId: m.championId,
-    championPoints: m.championPoints,
-    championPointsUntilNextLevel: m.championPointsUntilNextLevel,
-    championLevel: m.championLevel
-  })));
-  console.log(insertedMasteries);
-  return insertedMasteries;
+  try {
+    const masteries = await api
+      .ChampionMastery
+      .gettingBySummoner(summoner.id);
+    const deletedMasteries = await ChampionMastery.destroy({
+      where: {
+        summonerId: summoner.id
+      }
+    });
+    const insertedMasteries = await ChampionMastery.bulkCreate(masteries.slice(0, 4).map((m) => ({
+      summonerId: m.playerId,
+      championId: m.championId,
+      championPoints: m.championPoints,
+      championPointsUntilNextLevel: m.championPointsUntilNextLevel,
+      championLevel: m.championLevel
+    })));
+    return insertedMasteries;
+  } catch (err) {
+    throw new ClientError(404, "This summoner has no champion masteries");
+  }
 }
 
 async function updateSummoner(models, summoner) {
@@ -270,37 +279,38 @@ _.post('/summoners/:name', async(ctx, name, next) => {
         model: ctx.ChampionMastery
       }],
       order: [
-        [ ctx.ChampionMastery, 'championPoints', 'DESC']
+        [ctx.ChampionMastery, 'championPoints', 'DESC']
       ]
     });
 
   //If summoner doesn't exist, get and add to db
   if (!summoner || summoner.revisionDate === null) {
     console.log(`Summoner ${name} not found, retrieving from API`);
-    const s = await api
-      .Summoner
-      .gettingByName(name);
-    if (s) {
-      created = await ctx
+    try {
+      const s = await api
         .Summoner
-        .upsert({
-          name: s
-            .name
-            .trim(),
-          summonerLevel: s.summonerLevel,
-          id: s.id,
-          accountId: s.accountId,
-          profileIconId: s.profileIconId,
-          revisionDate: s.revisionDate
-        });
-      summoner = s;
+        .gettingByName(name);
+      if (s) {
+        created = await ctx
+          .Summoner
+          .upsert({
+            name: s
+              .name
+              .trim(),
+            summonerLevel: s.summonerLevel,
+            id: s.id,
+            accountId: s.accountId,
+            profileIconId: s.profileIconId,
+            revisionDate: s.revisionDate
+          });
+        summoner = s;
 
-      summoner.ChampionMasteries = await updateTopMasteries(ctx.ChampionMastery, summoner);
-    } else {
-      throw {
-        statusCode: 404,
-        body: "Summoner not found"
-      };
+        summoner.ChampionMasteries = await updateTopMasteries(ctx.ChampionMastery, summoner);
+      } else {
+        throw new ClientError(404, "Summoner not found");
+      }
+    } catch (err) {
+      throw new ClientError(404, "Error retrieving summoner");
     }
   } else if (Date.now() - summoner.revisionDate > (1000 * 60 * 60 * 24)) {
     console.log("Updating users data");
