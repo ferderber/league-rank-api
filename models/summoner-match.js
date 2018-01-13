@@ -46,13 +46,5 @@ module.exports = class SummonerMatch extends Sequelize.Model {
     }, {sequelize})
   }
   static associate(models) {
-    this.hasMany(models.Summoner, {
-      foreignKey: 'summonerId',
-      sourceKey: 'id'
-    });
-    this.hasMany(models.Summoner, {
-      foreignKey: 'championId',
-      sourceKey: 'id'
-    });
   }
 }

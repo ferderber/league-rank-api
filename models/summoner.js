@@ -34,5 +34,9 @@ module.exports = class Summoner extends Sequelize.Model {
       foreignKey: 'summonerId',
       sourceKey: 'id'
     });
+    this.hasMany(models.SummonerMatch, {
+      foreignKey: 'summonerId',
+      sourceKey: 'id'
+    });
   }
 }
