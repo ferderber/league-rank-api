@@ -99,6 +99,7 @@ async function updateRecentGames(models, summoner) {
         endIndex: 20
       });
   } catch (err) {
+    console.error(err);
     throw new ClientError(404, "No recent matches for this summoner");
   }
   //get db games that match
