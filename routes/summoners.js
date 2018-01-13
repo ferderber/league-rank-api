@@ -315,36 +315,35 @@ async function getSummoner(name, ctx) {
       const s = await api
         .Summoner
         .gettingByName(normalizedName);
-      if (s) {
-        created = await ctx
-          .Summoner
-          .upsert({
-            name: s.name,
-            summonerLevel: s.summonerLevel,
-            id: s.id,
-            accountId: s.accountId,
-            profileIconId: s.profileIconId,
-            revisionDate: s.revisionDate
-          });
-        //if summoner already existed and revisionDate is now > than the last update
-        if ((summoner && s.revisionDate > summoner.updatedAt) || !summoner) {
-          s.ChampionMasteries = await updateTopMasteries(ctx.ChampionMastery, s);
-          s.SummonerMatches = await updateRecentGames({
-            Match: ctx.Match,
-            SummonerMatch: ctx.SummonerMatch,
-            Summoner: ctx.Summoner
-          }, s);
-        } else {
-          s.ChampionMasteries = await getMasteries(ctx.ChampionMastery, s);
-          s.SummonerMatches = await getSummonerMatches(ctx.SummonerMatch, s);
-        }
-        return s;
+      created = await ctx
+        .Summoner
+        .upsert({
+          name: s.name,
+          summonerLevel: s.summonerLevel,
+          id: s.id,
+          accountId: s.accountId,
+          profileIconId: s.profileIconId,
+          revisionDate: s.revisionDate
+        });
+      //if summoner already existed and revisionDate is now > than the last update
+      if ((summoner && s.revisionDate > summoner.updatedAt) || !summoner) {
+        s.ChampionMasteries = await updateTopMasteries(ctx.ChampionMastery, s);
+        s.SummonerMatches = await updateRecentGames({
+          Match: ctx.Match,
+          SummonerMatch: ctx.SummonerMatch,
+          Summoner: ctx.Summoner
+        }, s);
       } else {
-        throw new ClientError(404, "Summoner not found");
+        s.ChampionMasteries = await getMasteries(ctx.ChampionMastery, s);
+        s.SummonerMatches = await getSummonerMatches(ctx.SummonerMatch, s);
       }
+      return s;
     } catch (err) {
-      console.error(err);
-      throw new ClientError(404, "Error retrieving summoner");
+      if (err.statusCode === 404) {
+        throw new ClientError(404, "Summoner not found");
+      } else {
+        throw new ClientError(404, "Error retrieving summoner");
+      }
     }
   }
   return summoner;
