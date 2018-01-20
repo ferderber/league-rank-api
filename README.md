@@ -1,6 +1,7 @@
 # league-rank-api
 
-[Demo version](http://lr.cobaltium.net)
+[Demo version](https://lr.cobaltium.net)
+[Web Application Repository](https://github.com/matthewferderber/league-rank)
 
 LeagueRank is a League of Legends leaderboard application that tracks users progress as they level up.
 
