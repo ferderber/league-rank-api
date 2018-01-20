@@ -52,14 +52,7 @@ function formatMastery(mastery) {
 }
 
 _.get('/summoners', async(ctx, next) => {
-  const summoners = await ctx
-    .Summoner
-    .findAll();
-  ctx.body = summoners.map(formatSummoner);
-});
-
-_.get('/summoners/:page_id', async(ctx, page, next) => {
-  let pageNum = parseInt(page);
+  let pageNum = parseInt(ctx.query.page);
   if (Number.isInteger(pageNum) && pageNum > 0) {
     let summoners = await ctx
       .Summoner
@@ -86,6 +79,12 @@ _.get('/summoners/:page_id', async(ctx, page, next) => {
     }
     ctx.body = summoners.map((summoner) => formatSummoner(summoner, ctx.champions));
   }
+});
+
+_.get('/summoners/:name', async(ctx, name, next) => {
+  const summoner = await getSummoner(name, ctx);
+  summoner.ChampionMasteries = getStatisticsFromMatches(summoner.SummonerMatches, summoner.ChampionMasteries);
+  ctx.body = formatSummoner(summoner, ctx.champions);
 });
 
 //Returns 20 game IDs
@@ -349,11 +348,5 @@ async function getSummoner(name, ctx) {
   }
   return summoner;
 }
-
-_.post('/summoners/:name', async(ctx, name, next) => {
-  const summoner = await getSummoner(name, ctx);
-  summoner.ChampionMasteries = getStatisticsFromMatches(summoner.SummonerMatches, summoner.ChampionMasteries);
-  ctx.body = formatSummoner(summoner, ctx.champions);
-});
 
 module.exports = _.routes();
